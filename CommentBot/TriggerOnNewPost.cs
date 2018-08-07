@@ -7,28 +7,26 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host;
 using RedditSharp;
 using RedditSharp.Things;
-
+using FrederickLin.RedditBot;
 
 namespace FrederickLin.RedditBot
 {
     public static class TriggerOnNewPost
     {
-        public static readonly string UserName = GetSetting("RedditUserName");
-        public static readonly string Password = GetSetting("RedditPassword");
-        public static readonly string ClientId = GetSetting("RedditClientId");
-        public static readonly string ClientSecret = GetSetting("RedditClientSecret");
-        public static readonly string RedirectUrl = GetSetting("RedditRedirectUrl");
-        public static readonly string SubredditName = GetSetting("SubredditName");
-        public static readonly string SearchKeyword = GetSetting("PostKeyword");
+        public static readonly string UserName = Configuration.GetValue("RedditUserName");
+        public static readonly string Password = Configuration.GetValue("RedditPassword");
+        public static readonly string ClientId = Configuration.GetValue("RedditClientId");
+        public static readonly string ClientSecret = Configuration.GetValue("RedditClientSecret");
+        public static readonly string RedirectUrl = Configuration.GetValue("RedditRedirectUrl");
+        public static readonly string SubredditName = Configuration.GetValue("SubredditName");
+        public static readonly string PostTitleKeyword = Configuration.GetValue("PostTitleKeyword");
+        public static readonly string CommentText = Configuration.GetValue("CommentText");
+        public static readonly string PrivateMessageTitle = Configuration.GetValue("PrivateMessageTitle");
+        public static readonly string PrivateMessageBody = Configuration.GetValue("PrivateMessageBody");
+
 
         public static DateTimeOffset lastProcessed = DateTime.MinValue;
 
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="myTimer"></param>
-        /// <param name="log"></param>
-        /// <returns></returns>
         [FunctionName("TriggerOnNewPost")]
         public static async Task Run([TimerTrigger("0 */1 * * * *")]TimerInfo myTimer, TraceWriter log)
         {
@@ -40,6 +38,7 @@ namespace FrederickLin.RedditBot
             Subreddit sub = await reddit.GetSubredditAsync(SubredditName);
 
             // get first 5 postings
+            // and sort in ascending order
             IEnumerable<Post> postings = sub.New.GetListing(5)
                 .OrderBy(p => p.Created);
 
@@ -60,21 +59,27 @@ namespace FrederickLin.RedditBot
                         lastProcessed = post.Created;
 
                         log.Info(String.Format("NEW POST DETECTED. ID: {0}, Title: {1}", post.Id, post.Title));
+                        log.Info(post.SelfText.Count().ToString());
 
                         // process only if the title contains the keyword
-                        if(post.Title.ToLower().Contains(SearchKeyword))
+                        // and the post is less than 250 characters
+                        if (post.Title.ToLower().Contains(PostTitleKeyword) &&
+                            post.SelfText.Count() < 250)
                         {
-                            log.Info("Keyword detected");
+                            log.Info("Keyword detected ...");
 
                             // post if you are the first
-                            if(post.CommentCount == 0)
+                            if (post.CommentCount == 0)
                             {
-                                Comment c = post.Comment("First! I'm not really a bot.");
+                                log.Info("Posting first comment ...");
+                                Comment c = post.Comment(CommentText);
                                 RedditUser pAuthor = post.Author;
 
-                                reddit.ComposePrivateMessage("this is a test", "this is a test", post.Author.Name);
+                                log.Info("Sending OP a private message ...");
+                                reddit.ComposePrivateMessage(PrivateMessageTitle, PrivateMessageBody, post.Author.Name);
                             }
-                        } else
+                        }
+                        else
                         {
                             log.Info("No keyword detected");
                         }
@@ -84,7 +89,7 @@ namespace FrederickLin.RedditBot
                     }
                 }
 
-                if(hasNewPost == false)
+                if (hasNewPost == false)
                 {
                     log.Info("No posts detected");
                 }
@@ -97,22 +102,8 @@ namespace FrederickLin.RedditBot
 
             }
 
-
             log.Info($"C# Timer trigger function executed at: {DateTime.Now}");
-            log.Info(agent.AccessToken);
 
         }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="name"></param>
-        /// <returns></returns>
-        private static string GetSetting(string name)
-        {
-            return ConfigurationManager.AppSettings[name];
-        }
-
-
     }
 }
