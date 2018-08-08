@@ -73,7 +73,7 @@ namespace FrederickLin.RedditBot
                             // post if you are the first
                             if (post.CommentCount == 0)
                             {
-                                log.Info("Posting first comment ...");
+                                log.Info("Posting first comment  ...");
                                 Comment c = post.Comment(CommentText);
                                 RedditUser pAuthor = post.Author;
 
