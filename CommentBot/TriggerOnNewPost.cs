@@ -62,9 +62,11 @@ namespace FrederickLin.RedditBot
                         log.Info(post.SelfText.Count().ToString());
 
                         // process only if the title contains the keyword
-                        // and the post is less than 250 characters
+                        // and the post is less than 200 characters
                         if (post.Title.ToLower().Contains(PostTitleKeyword) &&
-                            post.SelfText.Count() < 250)
+                            post.SelfText.Count() < 200 &&
+                            !post.SelfText.ToLower().Contains("https://") &&
+                            !post.SelfText.ToLower().Contains("http://"))
                         {
                             log.Info("Keyword detected ...");
 
